@@ -105,7 +105,7 @@ class TestProductModel(unittest.TestCase):
         """ It shoud Read a Product """
         product = ProductFactory()
         product.id = None
-        product.create() 
+        product.create()
 
         # Assert that the ID of the product object is not None after calling the create() method.
         self.assertIsNotNone(product.id)
@@ -117,7 +117,7 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found_product.description, product.description)
         self.assertEqual(Decimal(found_product.price), product.price)
 
-      def test_update_a_product(self):
+    def test_update_a_product(self):
         """It should Update a Product"""
         product = ProductFactory()
         # Set the ID of the product object to None and then call the create() method on the product.
@@ -185,7 +185,7 @@ class TestProductModel(unittest.TestCase):
         for product in products_by_name:
             self.assertEqual(product.name, product_name)
     
-      def test_find_by_availability(self):
+    def test_find_by_availability(self):
         """It should Find Products by Availability"""
         products = ProductFactory.create_batch(10)
         for product in products:
@@ -197,7 +197,7 @@ class TestProductModel(unittest.TestCase):
         for product in found:
             self.assertEqual(product.available, available)
 
-      def test_find_by_category(self):
+    def test_find_by_category(self):
         """It should Find Products by Category"""
         products = ProductFactory.create_batch(10)
         for product in products:

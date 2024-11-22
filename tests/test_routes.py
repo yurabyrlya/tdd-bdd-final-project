@@ -28,6 +28,7 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
+from urllib.parse import quote_plus
 from service import app
 from service.common import status
 from service.models import db, init_db, Product
@@ -189,6 +190,52 @@ class TestProductRoutes(TestCase):
         data = response.get_json()
         self.assertIn("was not found", data["message"])
 
+    def test_update_product(self):
+        """It should Update an existing Product"""
+        # create a product to update
+        test_product = ProductFactory()
+        # send a self.client.post() request to the BASE_URL with a json payload of test_product.serialize()
+        resp = self.client.post(BASE_URL, json=test_product.serialize())
+        # assert that the resp.status_code is status.HTTP_201_CREATED
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        # UPDATE THE PRODUCT
+        # get the data from resp.get_json() as new_product
+        new_product = resp.get_json()
+        # change new_account["description"] to unknown
+        new_product["description"] = "unknown"
+        # send a self.client.put() request to the BASE_URL with a json payload of new_product
+        resp = self.client.put(f"{BASE_URL}/{new_product['id']}", json=new_product)
+        # assert that the resp.status_code is status.HTTP_200_OK
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # get the data from resp.get_json() as updated_product
+        updated_product = resp.get_json()
+        # assert that the updated_product["description"] is whatever you changed it to   
+        self.assertEqual(updated_product["description"], 'unknown')
+
+    def test_delete_product(self):
+        """It should Delete a Product"""
+
+        # create a list products containing 5 products using the _create_products() method. 
+        products = self._create_products(5)
+        # call the self.get_product_count() method to retrieve the initial count of products before any deletion
+        count = self.get_product_count()
+        # assign the first product from the products list to the variable test_product
+        test_product = products[0]
+        # send a self.client.delete() request to the BASE_URL with test_product.id
+        resp = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        # assert that the resp.status_code is status.HTTP_204_NO_CONTENT
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        # check if the response data is empty 
+        self.assertEqual(len(resp.data), 0)
+        # send a self.client.get request to the same endpoint that was deleted to retrieve the deteled product
+        resp = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        # assert that the resp.status_code is status.HTTP_404_NOT_FOUND to confirm deletion of the product
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        # retrieve the count of products after the deletion operation
+        new_account = self.get_product_count()
+        # check if the new count of products is one less than the initial count   
+        self.assertEqual(new_account, count - 1) 
+    
     ######################################################################
     # Utility functions
     ######################################################################
@@ -198,6 +245,61 @@ class TestProductRoutes(TestCase):
         response = self.client.get(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
-        # logging.debug("data = %s", data)
+        #logging.debug("data = %s", data)
         return len(data)
 
+    def test_get_product_list(self):
+        """It should Get a list of Products"""
+        self._create_products(5)
+        response = self.client.get(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 5)
+    
+    def test_query_by_name(self):
+        """It should Query Products by name"""
+        products = self._create_products(5)
+        test_name = products[0].name
+        name_count = len([product for product in products if product.name == test_name])
+        response = self.client.get(
+            BASE_URL, query_string=f"name={quote_plus(test_name)}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), name_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["name"], test_name)
+
+    def test_query_by_category(self):
+        """It should Query Products by category"""
+        products = self._create_products(10)
+        category = products[0].category
+        found = [product for product in products if product.category == category]
+        found_count = len(found)
+        logging.debug("Found Products [%d] %s", found_count, found)
+
+        # test for available
+        response = self.client.get(BASE_URL, query_string=f"category={category.name}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["category"], category.name)
+
+    def test_query_by_availability(self):
+        """It should Query Products by availability"""
+        products = self._create_products(10)
+        available_products = [product for product in products if product.available is True]
+        available_count = len(available_products)        
+        # test for available
+        response = self.client.get(
+            BASE_URL, query_string="available=true"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), available_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["available"], True)
